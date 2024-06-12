@@ -1,0 +1,127 @@
+******Pipeline Script of Jenkins on Local server
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch:"main", url :"https://github.com/ujwalabhonkar/MLbootcamp.git"
+            }
+        }
+       
+        stage('setup') {
+            steps {
+                bat "pip install -r requirements.txt"
+            }
+        }
+       
+        stage('run') {
+            steps {
+                script{
+                try 
+                {
+                        timeout(time:3,unit:'MINUTES'){
+                        bat "python app.py"
+                        echo 'Succeeded!'
+                        }
+                } 
+                catch (err) 
+                {
+                        echo "Failed: ${err}"
+                } 
+                finally {
+                    echo "This is the last stage"
+                    }
+                }
+                }
+        }
+    }
+}
+
+
+*********EC2 script for ML demos for docker and non docker demos
+
+#!/bin/bash
+sudo apt update -y
+sudo apt install openjdk-17-jdk-headless -y
+sudo apt install python -y
+sudo apt install python3.12-venv -y
+sudo apt install python3-pip
+sudo apt install docker.io -y
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update -y
+sudo apt-get install jenkins -y
+sudo systemctl start jenkins
+sudo systemctl enable Jenkins
+sudo chmod 777 /var/run/docker.sock
+
+******Pipeline script for EC2
+
+pipeline {
+    agent any
+
+environment {
+    venvDir="";
+}
+    stages {
+       
+        stage("Check"){
+            steps{
+                git branch:"main",url:"https://github.com/ujwalabhonkar/MLbootcamp.git"
+            }
+        }
+        stage('Create Virtual Environment') {
+            steps {
+                script {
+                    // Define the path where you want to create the virtual environment
+                     venvDir = "${WORKSPACE}/venv"
+
+                    // Execute the shell command to create the virtual environment
+                   // sh "virtualenv ${venvDir}"
+                    sh "python3 -m venv ${venvDir}"
+                }
+            }
+        }
+
+        stage('Activate Virtual Environment') {
+            steps {
+                script {
+                    // Activate the virtual environment
+                    def activateScript = "${venvDir}/bin/activate"
+                    if (fileExists(activateScript)) {
+                        // Execute the activate script to activate the virtual environment
+                        sh ". ${activateScript}"
+                    } else {
+                        error "Virtual environment activation script not found."
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install required dependencies within the virtual environment
+                    sh "${venvDir}/bin/pip install -r ${WORKSPACE}/requirements.txt"
+                }
+            }
+        }
+
+ stage('RUN') {
+            steps {
+                script {
+                    // Install required dependencies within the virtual environment
+                   timeout(time:2,unit:"MINUTES"){
+                        sh "${venvDir}/bin/python3  ${WORKSPACE}/app.py"
+                   }
+                }
+            }
+        }
+        // Add more stages as needed
+    }
+}
