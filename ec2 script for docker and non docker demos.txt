@@ -1,0 +1,226 @@
+DAY1  *******Dependencies on Local for installation************
+
+install python from web
+
+
+******Pipeline Script of Jenkins on Local server
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch:"main", url :"https://github.com/ujwalabhonkar/MLbootcamp.git"
+            }
+        }
+       
+        stage('setup') {
+            steps {
+                bat "pip install -r requirements.txt"
+            }
+        }
+       
+        stage('run') {
+            steps {
+                script{
+                try 
+                {
+                        timeout(time:3,unit:'MINUTES'){
+                        bat "python app.py"
+                        echo 'Succeeded!'
+                        }
+                } 
+                catch (err) 
+                {
+                        echo "Failed: ${err}"
+                } 
+                finally {
+                    echo "This is the last stage"
+                    }
+                }
+                }
+        }
+    }
+}
+
+
+*********EC2 script for ML demos for docker and non docker demos
+
+#!/bin/bash
+sudo apt update -y
+sudo apt install openjdk-17-jdk-headless -y
+sudo apt install python -y
+sudo apt install python3.12-venv -y
+sudo apt install python3-pip
+sudo apt install docker.io -y
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update -y
+sudo apt-get install jenkins -y
+sudo systemctl start jenkins
+sudo systemctl enable Jenkins
+sudo chmod 777 /var/run/docker.sock
+
+******Pipeline script for non docker
+
+pipeline {
+    agent any
+
+environment {
+    venvDir="";
+}
+    stages {
+       
+        stage("Check"){
+            steps{
+                git branch:"main",url:"https://github.com/ujwalabhonkar/MLbootcamp.git"
+            }
+        }
+        stage('Create Virtual Environment') {
+            steps {
+                script {
+                    // Define the path where you want to create the virtual environment
+                     venvDir = "${WORKSPACE}/venv"
+
+                    // Execute the shell command to create the virtual environment
+                   // sh "virtualenv ${venvDir}"
+                    sh "python3 -m venv ${venvDir}"
+                }
+            }
+        }
+
+        stage('Activate Virtual Environment') {
+            steps {
+                script {
+                    // Activate the virtual environment
+                    def activateScript = "${venvDir}/bin/activate"
+                    if (fileExists(activateScript)) {
+                        // Execute the activate script to activate the virtual environment
+                        sh ". ${activateScript}"
+                    } else {
+                        error "Virtual environment activation script not found."
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install required dependencies within the virtual environment
+                    sh "${venvDir}/bin/pip install -r ${WORKSPACE}/requirements.txt"
+                }
+            }
+        }
+
+ stage('RUN') {
+            steps {
+                script {
+                    // Install required dependencies within the virtual environment
+                   timeout(time:2,unit:"MINUTES"){
+                        sh "${venvDir}/bin/python3  ${WORKSPACE}/app.py"
+                   }
+                }
+            }
+        }
+        // Add more stages as needed
+    }
+}
+
+*******************************
+Containers:
+- structure: 
+
+DEMO************Nginx app running on local***************
+- create account in Docker hub
+- Download and install docker desktop
+- on cmd try docker --version
+- docker image ls 
+- docker images
+- nginx is a static webserver
+- docker run -it -p 7676:80 --name nginx_c nginx  
+- docker ps
+- docker stop nginx_c
+- docker ps -a
+- docker start nginx_c
+docker logs -c
+docker rm nginx_c -f
+docker run -it -d -p 7676:80 --name nginx_c nginx
+docker exec -it nginx_c /bin/bash
+ls
+cd /usr
+ls
+cd share
+cd nginx
+ls
+cat index.html
+install vi using
+apt update -y
+apt install vim
+vi index.html
+and test by changing some code
+
+it is for getting log, p is for publish port - port mapping is mapping is mandatory for web apps
+
+**************Create Docker file and run it on local machine***********
+
+Create Docker file of ML app on local machine
+*********Docker file code*****
+FROM python:latest
+WORKDIR /app
+COPY ./requirements.txt /app
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 9090
+ENV FLASK_APP=app.py
+CMD [&quot;flask&quot;, &quot;run&quot;,&quot;--port&quot;,&quot;9090&quot;,&quot;--host&quot;, &quot;0.0.0.0&quot;]
+***************************
+cd to source code folder on local machine where dockerfile is available
+docker build -t image_name .   ( dot at the end )
+docker run -itd -p 5000:9090 --name container_name image_name
+
+*********Pipeline script for docker
+
+pipeline{
+    agent any
+   
+   
+    stages{
+       
+        stage("CheckOiut"){
+            steps{
+                git branch:'main',url:'https://github.com/ujwalabhonkar/MLbootcamp.git'
+            }
+        }
+       
+        stage("CleanUP"){
+           
+            steps {
+               
+                sh "docker rm loanapp -f"
+            }
+        }
+       
+        stage('Build'){
+           
+            steps{
+                 
+               
+              sh 'docker build -t loanapp .'
+             
+            }
+        }
+       
+       
+      stage("run"){
+          steps {
+         sh "docker run -itd -p 5000:9090 --name loanapp loanapp"
+            echo "Done"
+          }
+      }
+    }
+}
