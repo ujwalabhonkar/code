@@ -1,0 +1,73 @@
+***********ec2 user data script***********
+
+#!/bin/bash
+# Use this for your user data (script from top to bottom)
+# install httpd (Linux 2 version)
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+
+
+************Stress Tool **************
+sudo amazon-linux-extras install epel -y
+
+sudo yum install stress -y
+
+stress -c 4
+
+
+
+************Install MySQL Client on EC2 *************
+
+sudo dnf update -y
+
+mysql -h endpoint -P 3306 -u admin -p
+
+CREATE DATABASE testDB;
+
+
+
+************Some MYSQL queries for testing ***********
+
+CREATE TABLE Persons (
+    PersonID int,
+    LastName varchar(255),
+    FirstName varchar(255),
+    Address varchar(255),
+    City varchar(255)
+);
+
+SELECT * FROM Persons;
+
+
+INSERT INTO Persons (PersonID, LastName, FirstName, Address, City) VALUES ('1','Wagh', 'Raj', 'Business Bay Yerwada', 'Pune');
+
+INSERT INTO Persons (PersonID, LastName, FirstName, Address, City) VALUES ('2','King', 'Tony', 'Somewhere in New York', 'New York');
+
+SELECT * FROM Persons;
+
+SELECT * FROM Persons where LastName="King";
+
+DELETE FROM Persons WHERE FirstName='Raj';
+
+
+
+****************** Sample S3 Bucket Policy ***********
+
+{
+  "Id": "Policy1709278543552",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1709278542642",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::sample-mlop-bct/*",
+      "Principal": "*"
+    }
+  ]
+}
